@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context="com.tvd.analogicsprinter.MainActivity">
+
+    <include
+        android:id="@+id/main_toolbar"
+        layout="@layout/toolbar"/>
+
+    <LinearLayout
+        android:id="@+id/buttons_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/dp16"
+        android:orientation="vertical">
+
+        <Button
+            android:id="@+id/bt_print_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/dp16"
+            android:enabled="false"
+            android:text="@string/print_text"/>
+
+        <Button
+            android:id="@+id/bt_print_image"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/dp16"
+            android:enabled="false"
+            android:text="@string/print_image"
+            android:visibility="gone"/>
+
+        <Button
+            android:id="@+id/bt_print_report"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/dp16"
+            android:layout_marginTop="@dimen/dp16"
+            android:enabled="false"
+            android:text="@string/print_report"
+            android:visibility="gone"/>
+    </LinearLayout>
+</LinearLayout>

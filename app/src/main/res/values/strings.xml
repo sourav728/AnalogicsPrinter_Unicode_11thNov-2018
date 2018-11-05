@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Analogics Printer</string>
+
+    <string name="print_text">PRINT UNICODE</string>
+    <string name="print_image">PRINT IMAGE</string>
+    <string name="print_report">PRINT REPORT</string>
+</resources>
