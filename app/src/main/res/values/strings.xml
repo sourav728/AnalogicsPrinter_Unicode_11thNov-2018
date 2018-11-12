@@ -3,5 +3,6 @@
 
     <string name="print_text">PRINT UNICODE</string>
     <string name="print_image">PRINT IMAGE</string>
-    <string name="print_report">PRINT REPORT</string>
+    <string name="print_report">CONVERT TEXT INTO CANVAS</string>
+    <string name="print_bitmap">BITMAP PRINT</string>
 </resources>

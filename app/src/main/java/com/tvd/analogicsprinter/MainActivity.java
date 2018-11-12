@@ -9,12 +9,22 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
-import com.lvrenyang.io.Canvas;
+
+import android.graphics.Canvas;
+
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.Paint;
+
+import android.graphics.Point;
+import android.graphics.RectF;
 import android.graphics.Typeface;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -24,6 +34,7 @@ import android.text.Layout;
 import android.text.StaticLayout;
 import android.text.TextPaint;
 import android.util.Log;
+import android.view.Display;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
@@ -31,9 +42,13 @@ import android.widget.Toast;
 import com.analogics.thermalAPI.Bluetooth_Printer_3inch_prof_ThermalAPI;
 import com.analogics.thermalprinter.AnalogicsThermalPrinter;
 import com.analogics.utils.AnalogicsUtil;
+import com.onbarcode.barcode.android.BarcodeFactory;
 import com.tvd.analogicsprinter.services.BluetoothService;
 import com.tvd.analogicsprinter.values.FunctionCalls;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -53,10 +68,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     ProgressDialog printing;
     Bluetooth_Printer_3inch_prof_ThermalAPI api;
     String address = "";
-    Button bt_print_text, bt_print_image, bt_print_report;
+    Button bt_print_text, bt_print_image, bt_print_report, bt_bitmap_print;
     boolean text_print = false, image_print = false, printer_connected = false;
     FunctionCalls fcall;
-    Canvas canvas = new Canvas();
+    //Canvas canvas = new Canvas();
+    Paint paint;
     Handler handler = new Handler(new Handler.Callback() {
         @Override
         public boolean handleMessage(Message msg) {
@@ -78,7 +94,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
                 case MAIN_PRINTER_PAIRED:
                     try {
-                        Log.d("debug", "Address: "+ bluetoothDevice.getAddress());
+                        Log.d("debug", "Address: " + bluetoothDevice.getAddress());
                         address = bluetoothDevice.getAddress();
                         conn.openBT(bluetoothDevice.getAddress());
                     } catch (IOException ex) {
@@ -125,7 +141,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         conn = new AnalogicsThermalPrinter();
         api = new Bluetooth_Printer_3inch_prof_ThermalAPI();
-
+        paint = new Paint();
         bt_print_text = (Button) findViewById(R.id.bt_print_text);
         bt_print_text.setOnClickListener(this);
       /*  bt_print_image = (Button) findViewById(R.id.bt_print_image);
@@ -133,6 +149,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         bt_print_report = (Button) findViewById(R.id.bt_print_report);
         bt_print_report.setOnClickListener(this);*/
 
+        bt_print_report = (Button) findViewById(R.id.bt_print_report);
+        bt_print_report.setOnClickListener(this);
+
+        bt_bitmap_print = findViewById(R.id.bt_bitmap_print);
+        bt_bitmap_print.setOnClickListener(this);
         new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -229,6 +250,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         bt_print_text.setEnabled(enable);
        /* bt_print_image.setEnabled(enable);
         bt_print_report.setEnabled(enable);*/
+        bt_print_report.setEnabled(enable);
+        bt_bitmap_print.setEnabled(enable);
     }
 
     @Override
@@ -245,7 +268,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     }
                 }, 3000);
                 //printanalogics();
-                Prinit_Ticket(canvas);
+                //Prinit_Ticket(canvas);
                 break;
 
             case R.id.bt_print_image:
@@ -263,6 +286,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
 
             case R.id.bt_print_report:
+                Write_Image();
+                break;
+            case R.id.bt_bitmap_print:
+                Bitmap_Print();
                 break;
         }
     }
@@ -442,7 +469,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         StringBuilder stringBuilder = new StringBuilder();
         analogicsprint(aligncenter("Belagavi", 30), 6);
         analogicsprint(aligncenter("(" + "540038" + ")", 30), 6);
-        stringBuilder.append(space("RRNO", 16) + ":" + " " + "BA12345"+"\n");
+        stringBuilder.append(space("RRNO", 16) + ":" + " " + "BA12345" + "\n");
         stringBuilder.append(space("Account ID", 16) + ":" + " " + "1234567890");
         analogics_double_print(stringBuilder.toString(), 6);
         analogicsprint(space("Mtr.Rdr.Code", 16) + ":" + " " + "54008301", 6);
@@ -497,7 +524,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         analogicsprint(stringBuilder.toString(), 4);
     }
 
-  /*  private void analogics_Image_print(String address, String Printdata, int text_size, Typeface typeface, Layout.Alignment alignment) {
+    /*private void analogics_Image_print(String address, String Printdata, int text_size, Typeface typeface, Layout.Alignment alignment) {
         AnalogicsUtil utils = new AnalogicsUtil();
         Bitmap bmp = textAsBitmap(Printdata, (float)text_size, 9.0F, -16711681, typeface, alignment);
         try {
@@ -508,6 +535,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             var13.printStackTrace();
         }
     }*/
+
 
     public void analogicsprint(String Printdata, int feed_line) {
         conn.printData(api.font_Courier_30_VIP(Printdata));
@@ -539,7 +567,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         conn.printData(api.print_Contrast_VIP(n));
     }
 
-   /* private Bitmap textAsBitmap(String text, float textSize, float stroke, int color, Typeface typeface, Layout.Alignment alignment) {
+    /*private Bitmap textAsBitmap(String text, float textSize, float stroke, int color, Typeface typeface, Layout.Alignment alignment) {
         TextPaint paint = new TextPaint();
         paint.setColor(color);
         paint.setDither(false);
@@ -558,59 +586,266 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         return image;
     }*/
 
-    private void Prinit_Ticket( Canvas canvas) {
+    private void Prinit_Ticket(Canvas canvas) {
         int textsize = 22, rightspace = 14;
-        canvas.CanvasBegin(576, 500);
-        canvas.SetPrintDirection(0);
-        conn.multiLinguallinePrint(address,fcall.aligncenter("HUBLI ELECTRICITY SUPPLY COMPANY LTD", 42),28,Typeface.defaultFromStyle(Typeface.BOLD),3);
-        conn.multiLinguallinePrint(address,"ಉಪ ವಿಭಾಗ/Sub Division"+ " " + fcall.empty( 3) + ": " + "540038",textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ಆರ್.ಆರ್.ಸಂಖ್ಯೆ/RRNO"+ " " + fcall.empty( 9) + ": " + "IP57.228",textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ಖಾತೆ ಸಂಖ್ಯೆ/Account ID"+ " " + fcall.empty( 6) + ": " + "9913164549",28,Typeface.defaultFromStyle(Typeface.BOLD),3);
-        conn.multiLinguallinePrint(address,"ಜಕಾತಿ/Tariff"+ " " + fcall.empty( 14) + ": " + "5LT6B-M",textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ಮಂ.ಪ್ರಮಾಣ/Sanct Load"+ " " + fcall.empty( 5) + ": " + "HP: 3  KW 2",textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"Billing Period"+ " " + fcall.empty( 4) + ": " + "01/07/2018" + "-" + "01/08/2018",textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ರೀಡಿಂಗ ದಿನಾಂಕ/Reading Date"+ " " + fcall.empty( 1) + ": " + "01/08/2018",textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ಮೀಟರ್ ಸಂಖ್ಯೆ/Meter SlNo"+ " " + fcall.empty( 3) + ": " + "500010281098",textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ಇಂದಿನ ಮಾಪನ/Pres Rdg"+ " " + fcall.empty( 5) + ": " + "658 / NOR",textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ಹಿಂದಿನ ಮಾಪನ/Prev Rdg"+ " " + fcall.empty( 5) + ": " + "600 / NOR",textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ಮಾಪನ ಸ್ಥಿರಾಂಕ/Constant"+ " " + fcall.empty( 5) + ": " + "1",textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ಬಳಕೆ/Consumption"+ " " + fcall.empty( 10) + ": " + "58",textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ಸರಾಸರಿ/Average"+ " " + fcall.empty( 12) + ": " + "51",textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ದಾಖಲಿತ ಬೇಡಿಕೆ/Recorded MD"+ " " + fcall.empty( 2) + ": " + "10",textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ಪವರ ಫ್ಯಾಕ್ಟರ/Power Factor"+ " " + fcall.empty( 3) + ": " + "0.85",textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address," ",textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,fcall.empty( 8) + "ನಿಗದಿತ ಶುಲ್ಕ/Fixed Charges",textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,fcall.empty( 4) + "3.0"+ fcall.empty( 3) + " x "+ fcall.empty( 3) + "60.00"+ " " + fcall.empty( 4) +  "= " + fcall.rightAppend("180.00", rightspace),textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,fcall.empty( 4) + "2.0"+ fcall.empty( 3) + " x "+ fcall.empty( 3) + "80.00"+ " " + fcall.empty( 4) +  "= " + fcall.rightAppend("160.00", rightspace),textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address," ",textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,fcall.empty( 8) + "ವಿದ್ಯುತ್ ಶುಲ್ಕ/Energy Charges",textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,fcall.empty( 4) + "2.0"+ fcall.empty( 3) + " x "+ fcall.empty( 3) + "40.00"+ " " + fcall.empty( 4) + "= " + fcall.rightAppend("80.00", rightspace),textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,fcall.empty( 4) + "2.0"+ fcall.empty( 3) + " x "+ fcall.empty( 3) + "50.00"+ " " + fcall.empty( 4) + "= " + fcall.rightAppend("100.00", rightspace),textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,fcall.empty( 4) + "2.0"+ fcall.empty( 3) + " x "+ fcall.empty( 3) + "50.00"+ " " + fcall.empty( 4) + "= " + fcall.rightAppend("100.00", rightspace),textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,fcall.empty( 4) + "2.0"+ fcall.empty( 3) + " x "+ fcall.empty( 3) + "50.00"+ " " + fcall.empty( 4) + "= " + fcall.rightAppend("100.00", rightspace),textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address," ",textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ಎಫ್.ಎ.ಸಿ/FAC"+ " " + fcall.empty( 14) + ": " + fcall.rightAppend("1258.00", rightspace),textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ರಿಯಾಯಿತಿ/Rebates/TOD"+ " " + fcall.empty( 5) + ": " + fcall.rightAppend("10.00", rightspace),textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ಪಿ.ಎಫ್ ದಂಡ/PF Penalty"+ " " + fcall.empty( 4) + ": " + fcall.rightAppend("200.00", rightspace),textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ಎಂ.ಡಿ.ದಂಡ/MD Penalty"+ " " + fcall.empty( 6) + ": " + fcall.rightAppend("0.00", rightspace),textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ಬಡ್ಡಿ/Interest @1%"+ " " + fcall.empty( 9) + ": " + fcall.rightAppend("3.64", rightspace),textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ಇತರೆ/Others"+ " " + fcall.empty( 14) + ": " + fcall.rightAppend("0.00", rightspace),textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ತೆರಿಗೆ/Tax @9%"+ " " + fcall.empty( 14) + ": " + fcall.rightAppend("25.47", rightspace),textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ಬಿಲ್ ಮೊತ್ತ/Cur Bill Amt"+ " " + fcall.empty( 4) + ": " + fcall.rightAppend("620.01", rightspace),textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ಬಾಕಿ/Arrears"+ " " + fcall.empty( 14) + ": " + fcall.rightAppend("1258.00", rightspace),textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ಜಮಾ/Credits & Adj"+ " " + fcall.empty( 7) + ": " + fcall.rightAppend("320.01", rightspace),textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ಐ.ಒ.ಡಿ/IOD"+ " " + fcall.empty( 16) + ": " + fcall.rightAppend("520.01", rightspace),textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ಸರ್ಕಾರದ ಸಹಾಯಧನ/GOK"+ " " + fcall.empty( 5) + ": " + fcall.rightAppend("3.64", rightspace),textsize,Typeface.MONOSPACE,3);
-       // conn.multiLinguallinePrint(address,"Net Amt Due"+ " " + fcall.empty( 22) + ": " + fcall.rightAppend(getResources().getString(R.string.rupee) +" "+ "978950.00", 16),30,Typeface.defaultFromStyle(Typeface.BOLD),3);
-        conn.multiLinguallinePrint(address,"ಪಾವತಿ ಕೊನೆ ದಿನಾಂಕ/Due Date"+ " " + ": " + "15/08/2018",textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ಬಿಲ್ ದಿನಾಂಕ/Billed On"+ " " + fcall.empty( 5) + ": " + currentDateandTime(),textsize,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"ಮಾ.ಓ.ಸಂಕೇತ/MRCode"+ ":" + "54003818 DANIAL DISOUZA",20,Typeface.MONOSPACE,3);
+        /*canvas.CanvasBegin(576, 500);
+        canvas.SetPrintDirection(0);*/
+        conn.multiLinguallinePrint(address, fcall.aligncenter("HUBLI ELECTRICITY SUPPLY COMPANY LTD", 42), 28, Typeface.defaultFromStyle(Typeface.BOLD), 3);
+        conn.multiLinguallinePrint(address, "ಉಪ ವಿಭಾಗ/Sub Division" + " " + fcall.empty(3) + ": " + "540038", textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ಆರ್.ಆರ್.ಸಂಖ್ಯೆ/RRNO" + " " + fcall.empty(9) + ": " + "IP57.228", textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ಖಾತೆ ಸಂಖ್ಯೆ/Account ID" + " " + fcall.empty(6) + ": " + "9913164549", 28, Typeface.defaultFromStyle(Typeface.BOLD), 3);
+        conn.multiLinguallinePrint(address, "ಜಕಾತಿ/Tariff" + " " + fcall.empty(14) + ": " + "5LT6B-M", textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ಮಂ.ಪ್ರಮಾಣ/Sanct Load" + " " + fcall.empty(5) + ": " + "HP: 3  KW 2", textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "Billing Period" + " " + fcall.empty(4) + ": " + "01/07/2018" + "-" + "01/08/2018", textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ರೀಡಿಂಗ ದಿನಾಂಕ/Reading Date" + " " + fcall.empty(1) + ": " + "01/08/2018", textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ಮೀಟರ್ ಸಂಖ್ಯೆ/Meter SlNo" + " " + fcall.empty(3) + ": " + "500010281098", textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ಇಂದಿನ ಮಾಪನ/Pres Rdg" + " " + fcall.empty(5) + ": " + "658 / NOR", textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ಹಿಂದಿನ ಮಾಪನ/Prev Rdg" + " " + fcall.empty(5) + ": " + "600 / NOR", textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ಮಾಪನ ಸ್ಥಿರಾಂಕ/Constant" + " " + fcall.empty(5) + ": " + "1", textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ಬಳಕೆ/Consumption" + " " + fcall.empty(10) + ": " + "58", textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ಸರಾಸರಿ/Average" + " " + fcall.empty(12) + ": " + "51", textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ದಾಖಲಿತ ಬೇಡಿಕೆ/Recorded MD" + " " + fcall.empty(2) + ": " + "10", textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ಪವರ ಫ್ಯಾಕ್ಟರ/Power Factor" + " " + fcall.empty(3) + ": " + "0.85", textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, " ", textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, fcall.empty(8) + "ನಿಗದಿತ ಶುಲ್ಕ/Fixed Charges", textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, fcall.empty(4) + "3.0" + fcall.empty(3) + " x " + fcall.empty(3) + "60.00" + " " + fcall.empty(4) + "= " + fcall.rightAppend("180.00", rightspace), textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, fcall.empty(4) + "2.0" + fcall.empty(3) + " x " + fcall.empty(3) + "80.00" + " " + fcall.empty(4) + "= " + fcall.rightAppend("160.00", rightspace), textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, " ", textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, fcall.empty(8) + "ವಿದ್ಯುತ್ ಶುಲ್ಕ/Energy Charges", textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, fcall.empty(4) + "2.0" + fcall.empty(3) + " x " + fcall.empty(3) + "40.00" + " " + fcall.empty(4) + "= " + fcall.rightAppend("80.00", rightspace), textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, fcall.empty(4) + "2.0" + fcall.empty(3) + " x " + fcall.empty(3) + "50.00" + " " + fcall.empty(4) + "= " + fcall.rightAppend("100.00", rightspace), textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, fcall.empty(4) + "2.0" + fcall.empty(3) + " x " + fcall.empty(3) + "50.00" + " " + fcall.empty(4) + "= " + fcall.rightAppend("100.00", rightspace), textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, fcall.empty(4) + "2.0" + fcall.empty(3) + " x " + fcall.empty(3) + "50.00" + " " + fcall.empty(4) + "= " + fcall.rightAppend("100.00", rightspace), textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, " ", textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ಎಫ್.ಎ.ಸಿ/FAC" + " " + fcall.empty(14) + ": " + fcall.rightAppend("1258.00", rightspace), textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ರಿಯಾಯಿತಿ/Rebates/TOD" + " " + fcall.empty(5) + ": " + fcall.rightAppend("10.00", rightspace), textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ಪಿ.ಎಫ್ ದಂಡ/PF Penalty" + " " + fcall.empty(4) + ": " + fcall.rightAppend("200.00", rightspace), textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ಎಂ.ಡಿ.ದಂಡ/MD Penalty" + " " + fcall.empty(6) + ": " + fcall.rightAppend("0.00", rightspace), textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ಬಡ್ಡಿ/Interest @1%" + " " + fcall.empty(9) + ": " + fcall.rightAppend("3.64", rightspace), textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ಇತರೆ/Others" + " " + fcall.empty(14) + ": " + fcall.rightAppend("0.00", rightspace), textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ತೆರಿಗೆ/Tax @9%" + " " + fcall.empty(14) + ": " + fcall.rightAppend("25.47", rightspace), textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ಬಿಲ್ ಮೊತ್ತ/Cur Bill Amt" + " " + fcall.empty(4) + ": " + fcall.rightAppend("620.01", rightspace), textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ಬಾಕಿ/Arrears" + " " + fcall.empty(14) + ": " + fcall.rightAppend("1258.00", rightspace), textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ಜಮಾ/Credits & Adj" + " " + fcall.empty(7) + ": " + fcall.rightAppend("320.01", rightspace), textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ಐ.ಒ.ಡಿ/IOD" + " " + fcall.empty(16) + ": " + fcall.rightAppend("520.01", rightspace), textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ಸರ್ಕಾರದ ಸಹಾಯಧನ/GOK" + " " + fcall.empty(5) + ": " + fcall.rightAppend("3.64", rightspace), textsize, Typeface.MONOSPACE, 3);
+        // conn.multiLinguallinePrint(address,"Net Amt Due"+ " " + fcall.empty( 22) + ": " + fcall.rightAppend(getResources().getString(R.string.rupee) +" "+ "978950.00", 16),30,Typeface.defaultFromStyle(Typeface.BOLD),3);
+        conn.multiLinguallinePrint(address, "ಪಾವತಿ ಕೊನೆ ದಿನಾಂಕ/Due Date" + " " + ": " + "15/08/2018", textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ಬಿಲ್ ದಿನಾಂಕ/Billed On" + " " + fcall.empty(5) + ": " + currentDateandTime(), textsize, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "ಮಾ.ಓ.ಸಂಕೇತ/MRCode" + ":" + "54003818 DANIAL DISOUZA", 20, Typeface.MONOSPACE, 3);
         Bluetooth_Printer_3inch_prof_ThermalAPI printer = new Bluetooth_Printer_3inch_prof_ThermalAPI();
         conn.printData(printer.barcode_Code_128_Alpha_Numerics_VIP("9913164549978950"));
-        conn.multiLinguallinePrint(address,fcall.empty( 12) + "9913164549978950",16,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"\n",20,Typeface.MONOSPACE,3);
-        conn.multiLinguallinePrint(address,"\n",20,Typeface.MONOSPACE,3);
+        conn.multiLinguallinePrint(address, fcall.empty(12) + "9913164549978950", 16, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "\n", 20, Typeface.MONOSPACE, 3);
+        conn.multiLinguallinePrint(address, "\n", 20, Typeface.MONOSPACE, 3);
         conn.printData(printer.Reset_VIP());
 
     }
+
+    private void Bitmap_Print() {
+        File file = new File(android.os.Environment.getExternalStorageDirectory(), "alg_image.jpg");
+        if (file.exists()) {
+            Bluetooth_Printer_3inch_prof_ThermalAPI btapi = new Bluetooth_Printer_3inch_prof_ThermalAPI();
+            Bitmap bmp = BitmapFactory.decodeFile("/sdcard/alg_image.jpg");
+            Bitmap mBitmap = btapi.prepareReciptImageDataToPrint_VIP(bmp);
+            conn.printRecipt(address, mBitmap);
+        } else
+            Toast.makeText(this, "Please Convert Text into Canvas First and then take print..", Toast.LENGTH_SHORT).show();
+
+    }
+
+    private void Write_Image() {
+        Typeface typeface = Typeface.createFromAsset(getAssets(), "fonts/RobotoMono-Regular.ttf");
+        TextPaint paint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        // paint.setARGB(255, 0, 0, 0);
+        paint.setStyle(Paint.Style.FILL);
+        paint.setAntiAlias(true);
+        paint.setColor(Color.BLACK);
+        paint.setTextAlign(Paint.Align.LEFT);
+        paint.setTypeface(typeface);
+
+        Bitmap image = Bitmap.createBitmap(576, 1350, Bitmap.Config.ARGB_4444);
+        Canvas canvas = new Canvas(image);
+        canvas.drawColor(Color.WHITE);
+        Typeface bold = Typeface.create(typeface, Typeface.BOLD);
+        paint.setTypeface(bold);
+
+        Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.img5);
+        float left = 10;
+        float top = 10;
+        RectF dst = new RectF(left, top, left + 560, top + 120); // width=100, height=120
+        canvas.drawBitmap(bitmap, null, dst, null);
+
+       /* paint.setTextSize(27);
+        canvas.drawText("ಹುಬ್ಬಳ್ಳಿ ವಿದ್ಯುತ್ ಸರಬರಾಜು ಕಂಪನಿ ನಿಯಮಿತ", 10, 50, paint);*/
+        paint.setTextSize(23);
+        canvas.drawText("ಉಪ ವಿಭಾಗ/Sub Division", 10, 150, paint);
+        canvas.drawText(":", 340, 150, paint);
+        canvas.drawText(" 540038", 350, 150, paint);
+        canvas.drawText("ಆರ್.ಆರ್.ಸಂಖ್ಯೆ/RRNO", 10, 190, paint);
+        canvas.drawText(":", 340, 190, paint);
+        canvas.drawText(" IP57.228", 350, 190, paint);
+        paint.setTextSize(28);
+        canvas.drawText("ಖಾತೆ ಸಂಖ್ಯೆ/AccountID", 10, 230, paint);
+        canvas.drawText(":", 340, 230, paint);
+        canvas.drawText(" 1234567890", 350, 230, paint);
+        paint.setTextSize(23);
+        canvas.drawText("ಜಕಾತಿ/Tariff", 10, 270, paint);
+        canvas.drawText(":", 340, 270, paint);
+        canvas.drawText(" 5LT6B-M", 350, 270, paint);
+        canvas.drawText("ಮಂ.ಪ್ರಮಾಣ/Sanct Load", 10, 310, paint);
+        canvas.drawText(":", 340, 310, paint);
+        canvas.drawText(" HP:3 KW:2", 350, 310, paint);
+        canvas.drawText("Billing Period", 10, 350, paint);
+        canvas.drawText(":", 210, 350, paint);
+        canvas.drawText(" 01-10-2018" + " - " + "01-11-2018", 220, 350, paint);
+        // canvas.drawText("ೀಡಿಂಗ ದಿನಾಂಕ/Reading Date:", 10, 330, paint);
+        //canvas.drawText(" 01-11-2018", 310, 330, paint);
+        canvas.drawText("ಮೀಟರ್ ಸಂಖ್ಯೆ/Meter SlNo", 10, 390, paint);
+        canvas.drawText(":", 340, 390, paint);
+        canvas.drawText(" 12345678", 350, 390, paint);
+        canvas.drawText("ಇಂದಿನ ಮಾಪನ/Pres Rdg", 10, 430, paint);
+        canvas.drawText(":", 340, 430, paint);
+        canvas.drawText(" 100", 350, 430, paint);
+        canvas.drawText("ಹಿಂದಿನ ಮಾಪನ/Prev Rdg", 10, 470, paint);
+        canvas.drawText(":", 340, 470, paint);
+        canvas.drawText(" 50", 350, 470, paint);
+
+        canvas.drawText("ಮಾಪನ ಸ್ಥಿರಾಂಕ/Constant", 10, 510, paint);
+        canvas.drawText(":", 340, 510, paint);
+        canvas.drawText(" 1", 350, 510, paint);
+        canvas.drawText("ಬಳಕೆ/Consumption", 10, 550, paint);
+        canvas.drawText(":", 340, 550, paint);
+        canvas.drawText(" 50", 350, 550, paint);
+        canvas.drawText("ಸರಾಸರಿ/Average", 10, 590, paint);
+        canvas.drawText(":", 340, 590, paint);
+        canvas.drawText(" 51", 350, 590, paint);
+
+        canvas.drawText("ದಾಖಲಿತ ಬೇಡಿಕೆ/Recorded MD", 10, 630, paint);
+        canvas.drawText(":", 340, 630, paint);
+        canvas.drawText(" 10", 350, 630, paint);
+        canvas.drawText("ಪವರ ಫ್ಯಾಕ್ಟರ/Power Factor", 10, 670, paint);
+        canvas.drawText(":", 340, 670, paint);
+        canvas.drawText(" 0.85", 350, 670, paint);
+
+        paint.setTextAlign(Paint.Align.CENTER);
+        canvas.drawText("ನಿಗದಿತ ಶುಲ್ಕ/Fixed Charges", 290, 710, paint);
+
+        paint.setTextAlign(Paint.Align.LEFT);
+        canvas.drawText(centeralign2("3.0 x 60.00", 10) + rightspacing("180.00", 29), 10, 750, paint);
+
+        paint.setTextAlign(Paint.Align.CENTER);
+        canvas.drawText("ವಿದ್ಯುತ್ ಶುಲ್ಕ/Energy Charges", 290, 790, paint);
+        paint.setTextAlign(Paint.Align.LEFT);
+        canvas.drawText(centeralign2("3.0 x 60.00", 10) + rightspacing("180.00", 29), 10, 830, paint);
+
+        canvas.drawText("ಎಫ್.ಎ.ಸಿ/FAC", 10, 870, paint);
+        canvas.drawText(":", 340, 870, paint);
+        canvas.drawText(rightspacing("10.00", 16), 350, 870, paint);
+
+        canvas.drawText("ರಿಯಾಯಿತಿ/Rebates/TOD", 10, 910, paint);
+        canvas.drawText(":", 340, 910, paint);
+        canvas.drawText(rightspacing("10.00", 16), 910, 950, paint);
+
+        canvas.drawText("ಪಿ.ಎಫ್ ದಂಡ/PF Penalty", 10, 950, paint);
+        canvas.drawText(":", 340, 950, paint);
+        canvas.drawText(rightspacing("10.00", 16), 350, 950, paint);
+
+        canvas.drawText("ಎಂ.ಡಿ.ದಂಡ/MD Penalty", 10, 990, paint);
+        canvas.drawText(":", 340, 990, paint);
+        canvas.drawText(rightspacing("100.00", 16), 350, 990, paint);
+
+        canvas.drawText("ಬಡ್ಡಿ/Interest @1%", 10, 1030, paint);
+        canvas.drawText(":", 340, 1030, paint);
+        canvas.drawText(rightspacing("1000.00", 16), 350, 1030, paint);
+
+        canvas.drawText("ಇತರೆ/Others:", 10, 1070, paint);
+        canvas.drawText(":", 340, 1070, paint);
+        canvas.drawText(rightspacing("600.00", 16), 350, 1070, paint);
+
+        canvas.drawText("ತೆರಿಗೆ/Tax @9%", 10, 1110, paint);
+        canvas.drawText(":", 340, 1110, paint);
+        canvas.drawText(rightspacing("6000.00", 16), 350, 1110, paint);
+
+        canvas.drawText("ಬಿಲ್ ಮೊತ್ತ/Cur Bill Amt", 10, 1150, paint);
+        canvas.drawText(":", 340, 1150, paint);
+        canvas.drawText(rightspacing("60000.00", 16), 350, 1150, paint);
+
+        canvas.drawText("ಬಾಕಿ/Arrears", 10, 1190, paint);
+        canvas.drawText(":", 340, 1190, paint);
+        canvas.drawText(rightspacing("1258.00", 16), 350, 1190, paint);
+
+        canvas.drawText("ಜಮಾ/Credits & Adj", 10, 1230, paint);
+        canvas.drawText(":", 340, 1230, paint);
+        canvas.drawText(rightspacing("320.01", 16), 350, 1230, paint);
+
+        canvas.drawText("ಐ.ಒ.ಡಿ/IOD", 10, 1270, paint);
+        canvas.drawText(":", 340, 1270, paint);
+        canvas.drawText(rightspacing("520.01", 16), 350, 1270, paint);
+
+        paint.setTextSize(28);
+        canvas.drawText("Net Amt Due", 10, 1310, paint);
+        canvas.drawText(":", 220, 1310, paint);
+        canvas.drawText(rightspacing("5000000.00", 16), 300, 1310, paint);
+
+
+        try {
+            savebitmap(image);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+
+    public static File savebitmap(Bitmap bmp) throws IOException {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        bmp.compress(Bitmap.CompressFormat.JPEG, 100, bytes);
+        File f = new File(Environment.getExternalStorageDirectory()
+                + File.separator + "alg_image.jpg");
+        f.createNewFile();
+        FileOutputStream fo = new FileOutputStream(f);
+        fo.write(bytes.toByteArray());
+        fo.close();
+        return f;
+    }
+
+    private String centeralign2(String text, int width) {
+        int count = text.length();
+        int value = width - count;
+        int append = (value / 2);
+        //return space1(" ", append) + text;
+        return space1(String.format("%s", ""), append) + text;
+    }
+
+    private String space1(String s, int length) {
+        int temp;
+        StringBuilder spaces = new StringBuilder();
+        temp = length - s.length();
+        for (int i = 0; i < temp; i++) {
+            spaces.insert(0, String.format("%" + i + "s", ""));
+        }
+        return (s + spaces);
+    }
+
+    private String rightspacing(String s1, int len) {
+        int i;
+        StringBuilder s1Builder = new StringBuilder(s1);
+        for (i = 0; i < len - s1Builder.length(); i++) {
+        }
+        s1Builder.insert(0, String.format("%" + i + "s", ""));
+        s1 = s1Builder.toString();
+        return (s1);
+    }
+   /* private void printtext2(com.lvrenyang.io.Canvas canvas, String text, String text2, String text3, Typeface tfNumber, float textsize,float yaxis) {
+        yaxis++;
+        canvas.DrawText(text, 10, yaxis, 0, tfNumber, textsize, com.lvrenyang.io.Canvas.DIRECTION_LEFT_TO_RIGHT);
+        canvas.DrawText(text2, 310, yaxis, 0, tfNumber, textsize, com.lvrenyang.io.Canvas.DIRECTION_LEFT_TO_RIGHT);
+        canvas.DrawText(text3 + "\r\n", 350, yaxis, 0, tfNumber, textsize, com.lvrenyang.io.Canvas.DIRECTION_LEFT_TO_RIGHT);
+        if (textsize == 20) {
+            yaxis = yaxis + textsize + 8;
+        } else yaxis = yaxis + textsize + 6;
+        yaxis = yaxis + axis;
+    }*/
+
 }

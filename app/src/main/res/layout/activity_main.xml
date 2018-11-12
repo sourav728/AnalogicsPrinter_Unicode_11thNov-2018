@@ -24,7 +24,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/dp16"
             android:enabled="false"
-            android:text="@string/print_text"/>
+            android:text="@string/print_text"
+            android:visibility="gone"/>
 
         <Button
             android:id="@+id/bt_print_image"
@@ -41,8 +42,16 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="@dimen/dp16"
             android:layout_marginTop="@dimen/dp16"
-            android:enabled="false"
             android:text="@string/print_report"
-            android:visibility="gone"/>
+            android:enabled="false"
+            />
+        <Button
+            android:id="@+id/bt_bitmap_print"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/dp16"
+            android:layout_marginTop="@dimen/dp16"
+            android:text="@string/print_bitmap"
+            android:enabled="false"/>
     </LinearLayout>
 </LinearLayout>
